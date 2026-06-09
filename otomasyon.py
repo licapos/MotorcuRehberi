@@ -4,7 +4,7 @@ import urllib.parse
 from deep_translator import GoogleTranslator
 
 # ================= AYARLAR =================
-STRAPI_URL = "https://motorcu-backend.onrender.com"
+STRAPI_URL = "[https://motorcu-backend.onrender.com](https://motorcu-backend.onrender.com)"
 STRAPI_TOKEN = "380eacf98c36228e1228a7fced344573fbbd5c2c58208c943702073c000230b765e64ac9928da5e6c19a05c8a23c298f684e457a55fb6651c247fa9371266debf23a75d2d2b208e8d10d68b280d5e534efe8ebab2845b56f8028f2e5f23040fd230c91c40334000ffd536597a67ef9b0885d386d6e852cb1a0ee910bd58e037a"
 HEADERS = {"Authorization": f"Bearer {STRAPI_TOKEN}"}
 
