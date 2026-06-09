@@ -13,9 +13,6 @@ def otomasyon_baslat():
     # Rotaların
     rotalar = [
         {"Ad": "Antalya - Kaş Sahil Yolu"},
-        {"Ad": "Ege: İzmir - Çeşme Rotası"},
-        {"Ad": "Transfăgărășan Dağ Geçidi"},
-        {"Ad": "Amalfi Kıyıları"},
         {"Ad": "Route 66"}
     ]
 
