@@ -97,7 +97,10 @@ def otomasyon_baslat():
                         }
                         requests.post(f"{STRAPI_URL}/api/places", headers=HEADERS, json=p_data)
                 if os.path.exists(dosya_adi): os.remove(dosya_adi)
+c_req = requests.post(f"{STRAPI_URL}/api/cities", headers=HEADERS, json={"data": {"Ad": rota["Ad"]}})
 
+# Şu satırı ekle:
+print(f"Status Kodu: {c_req.status_code} - Cevap: {c_req.text}")                   
 if __name__ == "__main__":
     otomasyon_baslat()
     print("--- Tüm Dünyadaki Rotalar Eklendi ---")
