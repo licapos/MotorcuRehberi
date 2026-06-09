@@ -4,8 +4,8 @@ import urllib.parse
 from deep_translator import GoogleTranslator
 
 # ================= AYARLAR =================
-STRAPI_URL = "http://localhost:1337"
-STRAPI_TOKEN = "f3f9cae16285feee9bfd20a29c0cbc022b6ed87fbaefe2a97f13bbc447c038fd4591440d1543293f85b494f37614d677937f5808b68c7eb39706f4fb755cbe9f3457824b7e09f206343ad79fef5039fbf967d42731bbed60d9125b7dd90c82d1a94e5244ffd0c7f16637c90506c0b6249527001d06e78ce4c5b355476e5dda67"
+STRAPI_URL = "https://motorcu-backend.onrender.com"
+STRAPI_TOKEN = "380eacf98c36228e1228a7fced344573fbbd5c2c58208c943702073c000230b765e64ac9928da5e6c19a05c8a23c298f684e457a55fb6651c247fa9371266debf23a75d2d2b208e8d10d68b280d5e534efe8ebab2845b56f8028f2e5f23040fd230c91c40334000ffd536597a67ef9b0885d386d6e852cb1a0ee910bd58e037a"
 HEADERS = {"Authorization": f"Bearer {STRAPI_TOKEN}"}
 
 # ================= DEVASA VERİ KÜMESİ =================

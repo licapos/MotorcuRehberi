@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-STRAPI_URL = "[https://motorcu-api.onrender.com](https://motorcu-api.onrender.com)"
+STRAPI_URL = "https://motorcu-backend.onrender.com"
 STRAPI_TOKEN = "f3f9cae16285feee9bfd20a29c0cbc022b6ed87fbaefe2a97f13bbc447c038fd4591440d1543293f85b494f37614d677937f5808b68c7eb39706f4fb755cbe9f3457824b7e09f206343ad79fef5039fbf967d42731bbed60d9125b7dd90c82d1a94e5244ffd0c7f16637c90506c0b6249527001d06e78ce4c5b355476e5dda67"
 HEADERS = {"Authorization": f"Bearer {STRAPI_TOKEN}"}
 
