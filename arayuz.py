@@ -38,23 +38,10 @@ st.markdown('<p class="sub-text">Bir şehir seçin, o şehirdeki mekânları YZ 
 @st.cache_data(ttl=60)
 def sehirleri_cek():
     try:
-        # Once en locale dene
-        cevap = requests.get(f"{STRAPI_URL}/cities?locale=en", timeout=30)
-        veriler = cevap.json().get("data", []) if cevap.status_code == 200 else []
-
-        # Sonra tr locale dene
-        cevap2 = requests.get(f"{STRAPI_URL}/cities?locale=tr", timeout=30)
-        veriler2 = cevap2.json().get("data", []) if cevap2.status_code == 200 else []
-
-        # Birlesik liste (documentId'ye gore tekrar engelle)
-        seen = set()
-        birlesik = []
-        for v in veriler + veriler2:
-            did = v.get("documentId")
-            if did not in seen:
-                seen.add(did)
-                birlesik.append(v)
-        return birlesik
+        cevap = requests.get(f"{STRAPI_URL}/cities?locale=tr", timeout=30)
+        if cevap.status_code == 200:
+            return cevap.json().get("data", [])
+        return []
     except Exception as e:
         st.error(f"Sunucuya baglanamadi: {e}")
         return []
