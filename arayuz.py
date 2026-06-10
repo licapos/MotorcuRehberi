@@ -2,11 +2,10 @@ import streamlit as st
 import requests
 
 # ================= AYARLAR =================
-# locale=en eklendi çünkü rotalar English locale ile oluşturulmuş
-STRAPI_URL = "https://motorcu-api.onrender.com/api/cities?locale=en"
+STRAPI_URL = "https://motorcu-api.onrender.com/api"
 # ============================================
 
-st.set_page_config(page_title="Motorcu Rehberi", page_icon="🏍️", layout="centered")
+st.set_page_config(page_title="Motorcu Gezi Rehberi", page_icon="🏍️", layout="centered")
 
 # Özel CSS
 st.markdown("""
@@ -17,112 +16,143 @@ st.markdown("""
         background:linear-gradient(135deg,#1a1a2e,#16213e);
         border-radius:12px;border-left:4px solid #e94560;
     }
+    .mekan-card {
+        background:linear-gradient(135deg,#0f0f23,#1a1a3e);
+        border-radius:14px;padding:20px;margin:16px 0;
+        border:1px solid #ffffff10;
+    }
+    .mekan-baslik {font-size:1.3rem;font-weight:bold;color:#e94560;margin-bottom:4px}
+    .puan-badge {
+        display:inline-block;background:#e94560;color:white;
+        padding:4px 12px;border-radius:20px;font-size:0.85rem;font-weight:bold;
+    }
     .footer-text {text-align:center;color:#666;font-size:.85rem;margin-top:2rem;padding:16px}
 </style>
 """, unsafe_allow_html=True)
 
 st.title("🏍️ Motorcu Gezi Rehberi")
-st.markdown('<p class="sub-text">Bir rota seçin, detaylı bilgi ve görseller ile keşfedin!</p>', unsafe_allow_html=True)
-
-# ========== ROTA BİLGİLERİ ==========
-ROTA_BILGILERI = {
-    "Antalya - Kaş Sahil Yolu": {
-        "aciklama": "Türkiye'nin en güzel sahil yollarından biri olan Antalya-Kaş rotası, Akdeniz'in turkuaz sularına karşı muhteşem virajlarıyla motosiklet tutkunlarının vazgeçilmezi.",
-        "mesafe": "230 km", "sure": "~4 saat", "zorluk": "⭐⭐⭐ Orta",
-        "en_iyi_sezon": "Nisan - Kasım",
-        "dikkat": "Virajlı yollar ve dik iniş-çıkışlar mevcut. Dikkatli sürüş önerilir.",
-        "gorulen_yerler": "Olimpos, Çıralı, Demre, Myra Antik Kenti, Kaş Marina",
-        "gorsel": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=700&fit=crop",
-    },
-    "Route 66": {
-        "aciklama": "Dünyanın en ikonik motosiklet rotası! Chicago'dan Los Angeles'a uzanan efsanevi Route 66, Amerikan rüyasının asfalt üzerindeki yansıması.",
-        "mesafe": "3.940 km", "sure": "~2-3 hafta", "zorluk": "⭐⭐ Kolay-Orta",
-        "en_iyi_sezon": "Mayıs - Ekim",
-        "dikkat": "Uzun mesafe için iyi bir planlama ve dinlenme molaları şart.",
-        "gorulen_yerler": "Grand Canyon, Cadillac Ranch, Santa Monica Pier, Painted Desert",
-        "gorsel": "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=1200&h=700&fit=crop",
-    },
-}
-
-VARSAYILAN = {
-    "aciklama": "Motosikletle keşfedilmeyi bekleyen harika bir rota!",
-    "mesafe": "—", "sure": "—", "zorluk": "—", "en_iyi_sezon": "—",
-    "dikkat": "Güvenli sürüş kurallarına uyunuz.", "gorulen_yerler": "—",
-    "gorsel": "https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=1200&h=700&fit=crop",
-}
+st.markdown('<p class="sub-text">Bir şehir seçin, o şehirdeki mekânları YZ görselleriyle keşfedin!</p>', unsafe_allow_html=True)
 
 
 # 1. Strapi'den Şehirleri Çek
 @st.cache_data(ttl=60)
 def sehirleri_cek():
     try:
-        cevap = requests.get(STRAPI_URL)
+        cevap = requests.get(f"{STRAPI_URL}/cities?locale=en", timeout=30)
         if cevap.status_code == 200:
             return cevap.json().get("data", [])
         else:
-            st.error(f"API Hatası (Kod: {cevap.status_code})")
+            st.error(f"Şehir API Hatası (Kod: {cevap.status_code})")
             return []
     except Exception as e:
         st.error(f"Sunucuya bağlanılamadı: {e}")
         return []
 
 
+# 2. Strapi'den Mekanları Çek (şehre göre filtrelenmiş)
+@st.cache_data(ttl=60)
+def mekanlari_cek(sehir_doc_id):
+    try:
+        # Mekânları şehre göre filtrele + kapak resmini getir
+        url = f"{STRAPI_URL}/places?filters[city][documentId][$eq]={sehir_doc_id}&populate=KapakResmi,city&locale=en"
+        cevap = requests.get(url, timeout=30)
+        if cevap.status_code == 200:
+            return cevap.json().get("data", [])
+        else:
+            return []
+    except Exception:
+        return []
+
+
+# 3. Strapi Media URL oluştur
+def gorsel_url_al(mekan):
+    """Mekân verisinden kapak resmi URL'sini çıkarır"""
+    try:
+        kapak = mekan.get("KapakResmi")
+        if kapak:
+            # Strapi v5 yapısı
+            img_url = kapak.get("url", "")
+            if img_url:
+                # Eğer relative URL ise tam URL oluştur
+                if img_url.startswith("/"):
+                    return f"https://motorcu-api.onrender.com{img_url}"
+                return img_url
+    except Exception:
+        pass
+    return None
+
+
+# Ana Akış
 veriler = sehirleri_cek()
 
-# 2. Arayüz
 if veriler:
-    rota_isimleri = []
+    # Şehir isimlerini çıkar
+    sehir_isimleri = []
+    sehir_map = {}
     for sehir in veriler:
-        ad = sehir.get("Ad") or sehir.get("attributes", {}).get("Ad", "Bilinmeyen Rota")
-        rota_isimleri.append(ad)
+        ad = sehir.get("Ad", "Bilinmeyen")
+        sehir_isimleri.append(ad)
+        sehir_map[ad] = sehir
 
-    secilen_rota = st.selectbox("📍 Rota Seçin:", options=rota_isimleri, index=0)
+    # Şehir seçimi
+    secilen_sehir_adi = st.selectbox("🌍 Şehir Seçin:", options=sehir_isimleri, index=0)
     st.markdown("---")
 
-    if secilen_rota:
-        bilgi = ROTA_BILGILERI.get(secilen_rota, VARSAYILAN)
+    if secilen_sehir_adi:
+        secilen_sehir = sehir_map[secilen_sehir_adi]
+        sehir_doc_id = secilen_sehir.get("documentId")
 
-        # Strapi'den gelen ek bilgiler
-        secilen_veri = None
-        for sehir in veriler:
-            ad = sehir.get("Ad") or sehir.get("attributes", {}).get("Ad", "")
-            if ad == secilen_rota:
-                secilen_veri = sehir
-                break
+        # Şehir başlığı
+        st.header(f"📍 {secilen_sehir_adi}")
 
-        # Başlık
-        st.header(f"🏍️ {secilen_rota}")
+        # Ülke bilgisi
+        ulke = secilen_sehir.get("Ulke")
+        if ulke:
+            st.caption(f"🌍 Ülke: **{ulke}**")
 
-        # Ülke bilgisi (Strapi'den)
-        if secilen_veri and secilen_veri.get("Ulke"):
-            st.caption(f"🌍 Ülke: **{secilen_veri['Ulke']}**")
-
-        # Açıklama
-        st.markdown(f'<div class="rota-bilgi">{bilgi["aciklama"]}</div>', unsafe_allow_html=True)
-
-        # Görsel — Unsplash CDN, API çağrısı yok, kesin çalışır
-        st.image(bilgi["gorsel"], caption=f"📸 {secilen_rota}", use_container_width=True)
-
-        # Bilgi kartları
-        st.markdown("")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("📏 Mesafe", bilgi["mesafe"])
-        with col2:
-            st.metric("⏱️ Süre", bilgi["sure"])
-        with col3:
-            st.metric("💪 Zorluk", bilgi["zorluk"])
-
-        # Detaylar
-        st.markdown("")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown(f"**🗓️ En İyi Sezon**\n\n{bilgi['en_iyi_sezon']}\n\n**⚠️ Dikkat**\n\n{bilgi['dikkat']}")
-        with col_b:
-            st.markdown(f"**🏛️ Görülmesi Gereken Yerler**\n\n{bilgi['gorulen_yerler']}")
+        # Kısa bilgi
+        kisa_bilgi = secilen_sehir.get("KisaBilgi")
+        if kisa_bilgi and isinstance(kisa_bilgi, str) and kisa_bilgi.strip():
+            st.markdown(f'<div class="rota-bilgi">{kisa_bilgi}</div>', unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown('<p class="footer-text">🏍️ Motorcu Gezi Rehberi — Güvenli sürüşler dileriz! 🛣️</p>', unsafe_allow_html=True)
+
+        # Mekânları getir
+        if sehir_doc_id:
+            mekanlar = mekanlari_cek(sehir_doc_id)
+
+            if mekanlar:
+                st.subheader(f"🏛️ Mekânlar ({len(mekanlar)} adet)")
+                st.markdown("")
+
+                for mekan in mekanlar:
+                    mekan_adi = mekan.get("MekanAdi", "Bilinmeyen Mekân")
+                    aciklama = mekan.get("Aciklama", "")
+                    aciklama_en = mekan.get("AciklamaEN", "")
+                    puan = mekan.get("Puan", 0)
+
+                    # Mekân kartı
+                    st.markdown(f'<div class="mekan-baslik">📌 {mekan_adi}</div>', unsafe_allow_html=True)
+
+                    if puan:
+                        st.markdown(f'<span class="puan-badge">⭐ {puan}/5</span>', unsafe_allow_html=True)
+
+                    # Kapak resmi (Strapi Media Library'den)
+                    gorsel_url = gorsel_url_al(mekan)
+                    if gorsel_url:
+                        st.image(gorsel_url, caption=f"🤖 YZ Üretimi: {mekan_adi}", use_container_width=True)
+
+                    # Açıklama
+                    if aciklama:
+                        st.markdown(f"**🇹🇷 Türkçe:** {aciklama}")
+                    if aciklama_en:
+                        st.markdown(f"**🇬🇧 English:** {aciklama_en}")
+
+                    st.markdown("---")
+            else:
+                st.info("Bu şehir için henüz mekân eklenmemiş. Otomasyon scriptini çalıştırarak mekân ekleyebilirsiniz.")
+
+    st.markdown('<p class="footer-text">🏍️ Motorcu Gezi Rehberi — YZ Destekli Gezi Platformu 🛣️</p>', unsafe_allow_html=True)
 
 else:
-    st.warning("Rota bulunamadı. Panelden şehir ekleyip 'Publish' yapın.")
+    st.warning("Şehir bulunamadı. Strapi backend'in çalıştığından emin olun.")
