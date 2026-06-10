@@ -5,7 +5,8 @@ import urllib.parse
 STRAPI_URL = "https://motorcu-api.onrender.com/api/cities"
 # ============================================
 st.set_page_config(page_title="Motorcu Rehberi", page_icon="🏍️", layout="centered")
-st.title("Motorcu Gezi Rehberi")
+st.title("🏍️ Yapay Zeka Destekli Motorcu Rehberi")
+st.write("Bir rota seçin, Yapay Zeka o rotaya özel bir motosiklet görseli üretsin!")
 # 1. Strapi'den Şehirleri Çekme Fonksiyonu
 @st.cache_data(ttl=60)
 def sehirleri_cek():
