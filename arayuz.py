@@ -2,49 +2,62 @@ import streamlit as st
 import requests
 import urllib.parse
 # ================= AYARLAR =================
-# Public izinler açık olduğu için token'a gerek yok
 STRAPI_URL = "https://motorcu-api.onrender.com/api/cities"
 # ============================================
-st.set_page_config(page_title="Motorcu Rehberi", page_icon="🏍️")
+st.set_page_config(page_title="Motorcu Rehberi", page_icon="🏍️", layout="centered")
 st.title("Motorcu Gezi Rehberi")
 # 1. Strapi'den Şehirleri Çekme Fonksiyonu
+@st.cache_data(ttl=60)
 def sehirleri_cek():
     try:
-        # Public erişim açık, token göndermeden istek atıyoruz
         cevap = requests.get(STRAPI_URL)
         if cevap.status_code == 200:
-            # Strapi v5 yapısına göre veriyi alıyoruz
             return cevap.json().get("data", [])
         else:
             st.error(f"API Bağlantı Hatası (Kod: {cevap.status_code})")
-            try:
-                st.code(cevap.text[:500])
-            except Exception:
-                pass
             return []
     except Exception as e:
         st.error(f"Sunucuya bağlanılamadı: {e}")
         return []
 veriler = sehirleri_cek()
-# 2. Arayüz ve Yapay Zeka (AI) Görselleştirme
+# 2. Arayüz
 if veriler:
+    # Rota isimlerini çıkar
+    rota_isimleri = []
     for sehir in veriler:
-        # Strapi v5'te "attributes" sarmalayıcısı kaldırıldı,
-        # veriler doğrudan nesnenin içinde geliyor.
-        sehir_adi = sehir.get("Ad") or sehir.get("attributes", {}).get("Ad", "Bilinmeyen Rota")
-        
-        st.subheader(f"📍 Rota: {sehir_adi}")
-        
-        with st.spinner(f"Yapay Zeka '{sehir_adi}' için çalışıyor..."):
-            # AI Prompt'u hazırlıyoruz (Motorcu temalı)
-            prompt = f"A cool motorcycle riding on {sehir_adi}, epic landscape, photorealistic, 8k resolution, cinematic lighting"
-            encoded_prompt = urllib.parse.quote(prompt)
+        ad = sehir.get("Ad") or sehir.get("attributes", {}).get("Ad", "Bilinmeyen Rota")
+        rota_isimleri.append(ad)
+    # Dropdown menü ile rota seçimi
+    secilen_rota = st.selectbox(
+        "📍 Rota Seçin:",
+        options=rota_isimleri,
+        index=0
+    )
+    st.markdown("---")
+    # Seçilen rota için AI görsel oluştur
+    if secilen_rota:
+        st.subheader(f"🏍️ {secilen_rota}")
+        with st.spinner(f"Yapay Zeka '{secilen_rota}' için görsel üretiyor... (10-20 saniye sürebilir)"):
+            # Prompt oluştur
+            prompt = f"A cool motorcycle riding on {secilen_rota}, epic landscape, photorealistic, 8k resolution, cinematic lighting"
             
-            # Ücretsiz, key gerektirmeyen görsel AI servisi
-            ai_image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+            # Boşlukları + ile değiştir (Pollinations API formatı)
+            encoded_prompt = prompt.replace(" ", "+")
             
-            # Resmi ve bilgiyi ekrana basıyoruz
-            st.image(ai_image_url, caption=f"Yapay Zeka Üretimi: {sehir_adi}", use_container_width=True)
-            st.markdown("---")
+            # Pollinations AI görsel URL'si
+            ai_image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=768&nologo=true"
+            # Görseli requests ile indir, sonra Streamlit'te göster
+            try:
+                img_response = requests.get(ai_image_url, timeout=60)
+                if img_response.status_code == 200:
+                    st.image(img_response.content, caption=f"🤖 Yapay Zeka Üretimi: {secilen_rota}", use_container_width=True)
+                else:
+                    st.error(f"Görsel oluşturulamadı (Kod: {img_response.status_code})")
+            except requests.exceptions.Timeout:
+                st.warning("Görsel oluşturma zaman aşımına uğradı. Lütfen tekrar deneyin.")
+            except Exception as e:
+                st.error(f"Görsel yüklenirken hata oluştu: {e}")
+        st.markdown("---")
+        st.caption("Bu görsel yapay zeka tarafından anlık olarak üretilmiştir. Her yenilemede farklı bir görsel oluşturulur.")
 else:
     st.warning("Veritabanından rota bulunamadı. Lütfen panelden şehir ekleyip 'Publish' yaptığınızdan emin olun.")
