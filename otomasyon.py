@@ -1,31 +1,32 @@
+# -*- coding: utf-8 -*-
 """
-Motorcu Gezi Rehberi — Otomasyon Motoru
+Motorcu Gezi Rehberi - Otomasyon Motoru
 ========================================
-Bu script çalıştırıldığında:
-1. Hazır veri listesinden mekân bilgilerini alır
-2. deep-translator ile Türkçe açıklamaları İngilizceye çevirir
-3. Hugging Face API ile mekâna uygun turistik/manzara görseli üretir
-4. Görseli Strapi Media Library'ye yükler
-5. TR ve EN olarak Strapi API'ye kaydeder
+Bu script calistirildiginda:
+1. Hazir veri listesinden mekan bilgilerini alir
+2. deep-translator ile Turkce aciklamalari Ingilizceye cevirir
+3. Hugging Face API ile mekana uygun turistik gorsel uretir
+4. Gorseli Strapi Media Library'ye yukler
+5. Strapi API'ye kaydeder
 """
 
 import requests
 import time
-import os
+import sys
+import io
 from deep_translator import GoogleTranslator
+
+# Windows konsol encoding fix
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # ======================== AYARLAR ========================
 STRAPI_URL = "https://motorcu-api.onrender.com"
 
-# Strapi API Token — Admin panelinden oluşturduğun token'ı buraya yapıştır
-STRAPI_API_TOKEN = "BURAYA_STRAPI_TOKEN_YAPISTIR"
+import os
+STRAPI_API_TOKEN = os.environ.get("STRAPI_TOKEN", "")
 
-# Hugging Face API Token — https://huggingface.co/settings/tokens adresinden al
-HF_API_TOKEN = "BURAYA_HUGGINGFACE_TOKEN_YAPISTIR"
-
-# Hugging Face görsel üretim modeli
-HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
-HF_API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+HF_API_TOKEN = os.environ.get("HF_TOKEN", "")
+HF_API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
 
 HEADERS = {
     "Authorization": f"Bearer {STRAPI_API_TOKEN}",
@@ -33,47 +34,46 @@ HEADERS = {
 }
 # =========================================================
 
-# ======================== VERİ LİSTESİ ========================
-# Her şehir için mekân bilgileri (Türkçe)
+# ======================== VERI LISTESI ========================
 SEHIR_MEKANLARI = {
-    "Antalya - Kaş Sahil Yolu": {
-        "ulke": "Türkiye",
-        "kisa_bilgi": "Akdeniz'in turkuaz kıyıları boyunca uzanan, motosiklet tutkunlarının vazgeçilmez rotası.",
+    "Antalya - Kas Sahil Yolu": {
+        "ulke": "Turkiye",
+        "kisa_bilgi": "Akdeniz'in turkuaz kiyilari boyunca uzanan, motosiklet tutkunlarinin vazgecilmez rotasi.",
         "mekanlar": [
             {
                 "MekanAdi": "Olimpos Antik Kenti",
-                "Aciklama": "Likya uygarlığına ait bu antik kent, çam ormanları arasında denize sıfır konumuyla büyüleyici bir atmosfer sunar. Yanartaş (Chimaera) doğal alevleri de yakınındadır.",
+                "Aciklama": "Likya uygarligina ait bu antik kent, cam ormanlari arasinda denize sifir konumuyla buyuleyici bir atmosfer sunar. Yanartas (Chimaera) dogal alevleri de yakinindadir.",
                 "Puan": 4.7
             },
             {
-                "MekanAdi": "Kaş Marina",
-                "Aciklama": "Akdeniz'in en berrak sularına sahip bu küçük liman kasabası, dalış sporları, tekne turları ve romantik sokak kafeleriyle ünlüdür.",
+                "MekanAdi": "Kas Marina",
+                "Aciklama": "Akdeniz'in en berrak sularina sahip bu kucuk liman kasabasi, dalis sporlari, tekne turlari ve romantik sokak kafeleriyle unludur.",
                 "Puan": 4.5
             },
             {
                 "MekanAdi": "Demre Myra Antik Kenti",
-                "Aciklama": "Noel Baba'nın yaşadığı yer olarak bilinen Demre'deki Myra, kayalara oyulmuş muhteşem Likya kaya mezarlarıyla ziyaretçilerini büyüler.",
+                "Aciklama": "Noel Baba'nin yasadigi yer olarak bilinen Demre'deki Myra, kayalara oyulmus muhtesem Likya kaya mezarlariyla ziyaretcilerini buyuler.",
                 "Puan": 4.6
             }
         ]
     },
     "Route 66": {
         "ulke": "ABD",
-        "kisa_bilgi": "Chicago'dan Los Angeles'a uzanan efsanevi Amerikan yolu, motosiklet kültürünün simgesi.",
+        "kisa_bilgi": "Chicago'dan Los Angeles'a uzanan efsanevi Amerikan yolu, motosiklet kulturunun simgesi.",
         "mekanlar": [
             {
                 "MekanAdi": "Grand Canyon",
-                "Aciklama": "Dünyanın en büyük ve en etkileyici kanyonu olan Grand Canyon, milyonlarca yıllık doğal erozyonun yarattığı muhteşem bir doğa harikasıdır.",
+                "Aciklama": "Dunyanin en buyuk ve en etkileyici kanyonu olan Grand Canyon, milyonlarca yillik dogal erozyonun yarattigi muhtesem bir doga harikasi.",
                 "Puan": 4.9
             },
             {
                 "MekanAdi": "Cadillac Ranch",
-                "Aciklama": "Teksas çölünde toprağa gömülmüş 10 adet Cadillac otomobilin oluşturduğu bu sanat eseri, Route 66'nın en ikonik duraklarından biridir.",
+                "Aciklama": "Teksas colunde topraga gomulmus 10 adet Cadillac otomobilin olusturdugu bu sanat eseri, Route 66'nin en ikonik duraklarindan biridir.",
                 "Puan": 4.2
             },
             {
                 "MekanAdi": "Santa Monica Pier",
-                "Aciklama": "Route 66'nın batı ucundaki son durak olan Santa Monica İskelesi, Pasifik Okyanusu manzarası, lunapark ve sokak sanatçılarıyla ünlüdür.",
+                "Aciklama": "Route 66'nin bati ucundaki son durak olan Santa Monica Iskelesi, Pasifik Okyanusu manzarasi, lunapark ve sokak sanatcilariyla unludur.",
                 "Puan": 4.4
             }
         ]
@@ -83,89 +83,83 @@ SEHIR_MEKANLARI = {
 
 
 def cevir_ingilizce(metin):
-    """Türkçe metni İngilizceye çevirir (deep-translator)"""
+    """Turkce metni Ingilizceye cevirir (deep-translator)"""
     try:
         sonuc = GoogleTranslator(source='tr', target='en').translate(metin)
-        print(f"   ✅ Çeviri başarılı")
+        print(f"   [OK] Ceviri basarili")
         return sonuc
     except Exception as e:
-        print(f"   ⚠️ Çeviri hatası: {e}")
-        return metin  # Hata olursa orijinali döndür
+        print(f"   [!] Ceviri hatasi: {e}")
+        return metin
 
 
 def gorsel_uret(mekan_adi, sehir_adi):
-    """Hugging Face API ile mekâna uygun turistik görsel üretir"""
-    prompt = f"Beautiful tourist photograph of {mekan_adi}, {sehir_adi}, scenic landscape, professional travel photography, golden hour lighting, high resolution, 4k"
-
+    """Hugging Face Inference API ile mekana uygun turistik gorsel uretir"""
+    prompt = f"Beautiful tourist photograph of {mekan_adi}, {sehir_adi}, scenic landscape, travel photography, 4k"
     headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
-    print(f"   🎨 Görsel üretiliyor: {mekan_adi}...")
+    print(f"   [ART] Gorsel uretiliyor: {mekan_adi}...")
 
-    try:
-        response = requests.post(
-            HF_API_URL,
-            headers=headers,
-            json={"inputs": prompt},
-            timeout=120
-        )
+    max_deneme = 3
+    for deneme in range(1, max_deneme + 1):
+        try:
+            response = requests.post(
+                HF_API_URL,
+                headers=headers,
+                json={"inputs": prompt},
+                timeout=180
+            )
 
-        if response.status_code == 200:
-            content_type = response.headers.get("content-type", "")
-            if "image" in content_type:
-                print(f"   ✅ Görsel üretildi ({len(response.content)} bytes)")
-                return response.content
+            if response.status_code == 200:
+                content_type = response.headers.get("content-type", "")
+                if "image" in content_type:
+                    print(f"   [OK] Gorsel uretildi ({len(response.content)} bytes)")
+                    return response.content
+                else:
+                    print(f"   [!] Beklenmeyen yanit: {content_type}")
+                    return None
+            elif response.status_code == 503:
+                wait = 30 * deneme
+                print(f"   [WAIT] Model yukleniyor, {wait}sn bekleniyor... (deneme {deneme}/{max_deneme})")
+                time.sleep(wait)
+                continue
             else:
-                print(f"   ⚠️ Beklenmeyen yanıt tipi: {content_type}")
+                print(f"   [X] Gorsel hatasi (Kod: {response.status_code}): {response.text[:150]}")
                 return None
-        elif response.status_code == 503:
-            # Model yükleniyor, bekle ve tekrar dene
-            print(f"   ⏳ Model yükleniyor, 30 saniye bekleniyor...")
-            time.sleep(30)
-            response = requests.post(HF_API_URL, headers=headers, json={"inputs": prompt}, timeout=120)
-            if response.status_code == 200 and "image" in response.headers.get("content-type", ""):
-                print(f"   ✅ Görsel üretildi (2. deneme)")
-                return response.content
-            else:
-                print(f"   ❌ 2. deneme de başarısız (Kod: {response.status_code})")
-                return None
-        else:
-            print(f"   ❌ Görsel üretilemedi (Kod: {response.status_code}): {response.text[:200]}")
+        except requests.exceptions.Timeout:
+            print(f"   [X] Zaman asimi (deneme {deneme}/{max_deneme})")
+            continue
+        except Exception as e:
+            print(f"   [X] Gorsel hatasi: {e}")
             return None
-    except requests.exceptions.Timeout:
-        print(f"   ❌ Görsel üretme zaman aşımına uğradı")
-        return None
-    except Exception as e:
-        print(f"   ❌ Görsel hatası: {e}")
-        return None
+
+    print(f"   [X] {max_deneme} deneme sonrasi gorsel uretilemedi")
+    return None
 
 
 def strapi_gorsel_yukle(gorsel_bytes, dosya_adi):
-    """Görseli Strapi Media Library'ye yükler, media ID döner"""
+    """Gorseli Strapi Media Library'ye yukler, media ID doner"""
     upload_url = f"{STRAPI_URL}/api/upload"
     auth_headers = {"Authorization": f"Bearer {STRAPI_API_TOKEN}"}
-
-    files = {
-        "files": (dosya_adi, gorsel_bytes, "image/png")
-    }
+    files = {"files": (dosya_adi, gorsel_bytes, "image/png")}
 
     try:
         response = requests.post(upload_url, headers=auth_headers, files=files, timeout=60)
-        if response.status_code == 200 or response.status_code == 201:
+        if response.status_code in [200, 201]:
             media_data = response.json()
             if isinstance(media_data, list) and len(media_data) > 0:
                 media_id = media_data[0]["id"]
-                print(f"   ✅ Görsel Strapi'ye yüklendi (Media ID: {media_id})")
+                print(f"   [OK] Gorsel Strapi'ye yuklendi (Media ID: {media_id})")
                 return media_id
-        print(f"   ❌ Görsel yükleme hatası (Kod: {response.status_code}): {response.text[:200]}")
+        print(f"   [X] Gorsel yukleme hatasi (Kod: {response.status_code}): {response.text[:200]}")
         return None
     except Exception as e:
-        print(f"   ❌ Görsel yükleme hatası: {e}")
+        print(f"   [X] Gorsel yukleme hatasi: {e}")
         return None
 
 
 def sehir_bul_veya_olustur(sehir_adi, ulke, kisa_bilgi):
-    """Strapi'de şehri arar, yoksa oluşturur. documentId döner."""
-    # Önce ara
+    """Strapi'de sehri arar, yoksa olusturur. documentId doner."""
     try:
         search_url = f"{STRAPI_URL}/api/cities?filters[Ad][$eq]={requests.utils.quote(sehir_adi)}&locale=en"
         response = requests.get(search_url, headers=HEADERS)
@@ -173,145 +167,127 @@ def sehir_bul_veya_olustur(sehir_adi, ulke, kisa_bilgi):
             data = response.json().get("data", [])
             if data:
                 doc_id = data[0].get("documentId")
-                print(f"   📍 Şehir bulundu: {sehir_adi} (ID: {doc_id})")
+                print(f"   [FOUND] Sehir bulundu: {sehir_adi} (ID: {doc_id})")
                 return doc_id
     except Exception:
         pass
 
-    # Yoksa oluştur
     try:
-        city_data = {
-            "data": {
-                "Ad": sehir_adi,
-                "Ulke": ulke,
-                "KisaBilgi": kisa_bilgi
-            }
-        }
-        create_url = f"{STRAPI_URL}/api/cities"
-        response = requests.post(create_url, headers=HEADERS, json=city_data)
+        city_data = {"data": {"Ad": sehir_adi, "Ulke": ulke, "KisaBilgi": kisa_bilgi}}
+        response = requests.post(f"{STRAPI_URL}/api/cities", headers=HEADERS, json=city_data)
         if response.status_code in [200, 201]:
             doc_id = response.json().get("data", {}).get("documentId")
-            print(f"   ✅ Şehir oluşturuldu: {sehir_adi} (ID: {doc_id})")
-
-            # Publish et
-            publish_url = f"{STRAPI_URL}/api/cities/{doc_id}/actions/publish"
-            requests.post(publish_url, headers=HEADERS, json={})
-
+            print(f"   [OK] Sehir olusturuldu: {sehir_adi} (ID: {doc_id})")
+            requests.post(f"{STRAPI_URL}/api/cities/{doc_id}/actions/publish", headers=HEADERS, json={})
             return doc_id
         else:
-            print(f"   ❌ Şehir oluşturma hatası: {response.text[:200]}")
+            print(f"   [X] Sehir hatasi: {response.text[:200]}")
             return None
     except Exception as e:
-        print(f"   ❌ Şehir hatası: {e}")
+        print(f"   [X] Sehir hatasi: {e}")
         return None
 
 
-def mekan_olustur(mekan, sehir_doc_id, sehir_adi, media_id, aciklama_en):
-    """Strapi'de mekân kaydı oluşturur (TR locale)"""
+def mekan_olustur(mekan, sehir_doc_id, media_id, aciklama_en):
+    """Strapi'de mekan kaydi olusturur"""
     try:
+        aciklama_birlesik = f"{mekan['Aciklama']}\n\n[EN] {aciklama_en}"
+
         place_data = {
             "data": {
                 "MekanAdi": mekan["MekanAdi"],
-                "Aciklama": mekan["Aciklama"],
-                "AciklamaEN": aciklama_en,
+                "Aciklama": aciklama_birlesik,
                 "Puan": mekan["Puan"],
-                "city": sehir_doc_id,
             }
         }
 
-        # Görsel varsa ekle
+        # city iliskisi varsa ekle, yoksa atla
+        try:
+            test = requests.post(
+                f"{STRAPI_URL}/api/places",
+                headers=HEADERS,
+                json={"data": {"MekanAdi": "_test_", "city": sehir_doc_id}},
+                timeout=10
+            )
+            if test.status_code in [200, 201]:
+                # city calisiyor, test kaydini sil
+                test_doc = test.json().get("data", {}).get("documentId")
+                if test_doc:
+                    requests.delete(f"{STRAPI_URL}/api/places/{test_doc}", headers=HEADERS)
+                place_data["data"]["city"] = sehir_doc_id
+            # 400 donerse city alani yok, ekleme
+        except Exception:
+            pass
+
         if media_id:
             place_data["data"]["KapakResmi"] = media_id
 
-        create_url = f"{STRAPI_URL}/api/places"
-        response = requests.post(create_url, headers=HEADERS, json=place_data)
+        response = requests.post(f"{STRAPI_URL}/api/places", headers=HEADERS, json=place_data)
 
         if response.status_code in [200, 201]:
             doc_id = response.json().get("data", {}).get("documentId")
-            print(f"   ✅ Mekân oluşturuldu: {mekan['MekanAdi']} (ID: {doc_id})")
-
-            # Publish et
-            publish_url = f"{STRAPI_URL}/api/places/{doc_id}/actions/publish"
-            requests.post(publish_url, headers=HEADERS, json={})
-            print(f"   ✅ Mekân yayınlandı")
-
+            print(f"   [OK] Mekan olusturuldu: {mekan['MekanAdi']} (ID: {doc_id})")
+            requests.post(f"{STRAPI_URL}/api/places/{doc_id}/actions/publish", headers=HEADERS, json={})
+            print(f"   [OK] Mekan yayinlandi")
             return doc_id
         else:
-            print(f"   ❌ Mekân oluşturma hatası (Kod: {response.status_code}): {response.text[:300]}")
+            print(f"   [X] Mekan hatasi (Kod: {response.status_code}): {response.text[:300]}")
             return None
     except Exception as e:
-        print(f"   ❌ Mekân hatası: {e}")
+        print(f"   [X] Mekan hatasi: {e}")
         return None
 
 
 def otomasyon_baslat():
-    """Ana otomasyon döngüsü — tek tuşla çalışır"""
+    """Ana otomasyon dongusu - tek tusla calisir"""
     print("=" * 60)
-    print("🏍️  MOTORCU GEZİ REHBERİ — OTOMASYON MOTORU")
+    print("MOTORCU GEZI REHBERI - OTOMASYON MOTORU")
     print("=" * 60)
-    print()
 
-    toplam_mekan = sum(len(v["mekanlar"]) for v in SEHIR_MEKANLARI.values())
-    print(f"📊 {len(SEHIR_MEKANLARI)} şehir, {toplam_mekan} mekân işlenecek")
-    print()
+    toplam = sum(len(v["mekanlar"]) for v in SEHIR_MEKANLARI.values())
+    print(f">> {len(SEHIR_MEKANLARI)} sehir, {toplam} mekan islenecek\n")
 
     basarili = 0
     hatali = 0
 
-    for sehir_adi, sehir_verisi in SEHIR_MEKANLARI.items():
+    for sehir_adi, sv in SEHIR_MEKANLARI.items():
         print(f"\n{'='*50}")
-        print(f"🌍 ŞEHİR: {sehir_adi} ({sehir_verisi['ulke']})")
+        print(f"SEHIR: {sehir_adi} ({sv['ulke']})")
         print(f"{'='*50}")
 
-        # 1. Şehri bul veya oluştur
-        sehir_doc_id = sehir_bul_veya_olustur(
-            sehir_adi,
-            sehir_verisi["ulke"],
-            sehir_verisi["kisa_bilgi"]
-        )
-
+        sehir_doc_id = sehir_bul_veya_olustur(sehir_adi, sv["ulke"], sv["kisa_bilgi"])
         if not sehir_doc_id:
-            print(f"   ❌ Şehir oluşturulamadı, mekânlar atlanıyor!")
-            hatali += len(sehir_verisi["mekanlar"])
+            hatali += len(sv["mekanlar"])
             continue
 
-        # 2. Her mekân için işlem yap
-        for i, mekan in enumerate(sehir_verisi["mekanlar"], 1):
-            print(f"\n   --- Mekân {i}/{len(sehir_verisi['mekanlar'])}: {mekan['MekanAdi']} ---")
+        for i, mekan in enumerate(sv["mekanlar"], 1):
+            print(f"\n   --- Mekan {i}/{len(sv['mekanlar'])}: {mekan['MekanAdi']} ---")
 
-            # 2a. Çeviri (TR → EN)
-            print(f"   🔄 Çeviri yapılıyor...")
+            print(f"   [TR->EN] Ceviri yapiliyor...")
             aciklama_en = cevir_ingilizce(mekan["Aciklama"])
 
-            # 2b. AI Görsel Üretimi
             gorsel_bytes = gorsel_uret(mekan["MekanAdi"], sehir_adi)
 
-            # 2c. Görseli Strapi Media Library'ye yükle
             media_id = None
             if gorsel_bytes:
                 dosya_adi = f"{mekan['MekanAdi'].replace(' ', '_').lower()}.png"
                 media_id = strapi_gorsel_yukle(gorsel_bytes, dosya_adi)
 
-            # 2d. Mekânı Strapi'ye kaydet
-            sonuc = mekan_olustur(mekan, sehir_doc_id, sehir_adi, media_id, aciklama_en)
-
+            sonuc = mekan_olustur(mekan, sehir_doc_id, media_id, aciklama_en)
             if sonuc:
                 basarili += 1
             else:
                 hatali += 1
 
-            # Rate limiting - API'yi boğmamak için kısa bekleme
             time.sleep(2)
 
-    # Sonuç raporu
     print(f"\n{'='*60}")
-    print(f"📊 SONUÇ RAPORU")
+    print(f"SONUC RAPORU")
     print(f"{'='*60}")
-    print(f"   ✅ Başarılı: {basarili} mekân")
-    print(f"   ❌ Hatalı:   {hatali} mekân")
-    print(f"   📊 Toplam:   {basarili + hatali} mekân")
+    print(f"   Basarili: {basarili} mekan")
+    print(f"   Hatali:   {hatali} mekan")
+    print(f"   Toplam:   {basarili + hatali} mekan")
     print(f"{'='*60}")
-    print(f"🏁 Otomasyon tamamlandı!")
 
 
 if __name__ == "__main__":

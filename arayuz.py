@@ -54,7 +54,7 @@ def sehirleri_cek():
 def mekanlari_cek(sehir_doc_id):
     try:
         # Mekânları şehre göre filtrele + kapak resmini getir
-        url = f"{STRAPI_URL}/places?filters[city][documentId][$eq]={sehir_doc_id}&populate=KapakResmi,city&locale=en"
+        url = f"{STRAPI_URL}/places?filters[city][documentId][$eq]={sehir_doc_id}&populate=KapakResmi,city&locale=tr"
         cevap = requests.get(url, timeout=30)
         if cevap.status_code == 200:
             return cevap.json().get("data", [])
