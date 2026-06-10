@@ -1,45 +1,44 @@
 import streamlit as st
 import requests
 import urllib.parse
-
 # ================= AYARLAR =================
-STRAPI_URL = "https://motorcu-backend.onrender.com/api/cities"
-
+# ÖNEMLİ: URL'yi kendi Render backend adresinle eşleştir
+STRAPI_URL = "https://motorcu-api.onrender.com/api/cities"
 # BURAYA STRAPI'DEN ALDIĞIN UZUN API TOKEN'INI YAPIŞTIR:
 STRAPI_API_KEY = "5aa3724f06753541c0f53f014b65cb32060d92be8df3aae761e3a8698677b6e3e077b92f5cb677e7b76e6f88a9627fec4c21caa6d7182006f2ada223e3741600fa115358bd28040d104b4397c851e169bd79d338029ff62f936d97cf93d4f976061114cefd3a5f327fcf3990cba2efee2454d9cec628d53822adca13d932e480" 
-
 HEADERS = {
     "Authorization": f"Bearer {STRAPI_API_KEY}",
     "Content-Type": "application/json"
 }
 # ============================================
-
 st.set_page_config(page_title="Motorcu Rehberi", page_icon="🏍️")
-
 st.title("🏍️ Yapay Zeka Destekli Motorcu Rehberi")
 st.write("Aşağıdaki rotaların görselleri, veritabanından (Strapi) gelen metinlere göre Yapay Zeka tarafından anlık olarak çizilmektedir.")
-
 # 1. Strapi'den Şehirleri Çekme Fonksiyonu
 def sehirleri_cek():
     try:
         cevap = requests.get(STRAPI_URL, headers=HEADERS)
         if cevap.status_code == 200:
-            # Strapi v4 yapısına göre veriyi alıyoruz
+            # Strapi v5 yapısına göre veriyi alıyoruz
             return cevap.json().get("data", [])
         else:
             st.error(f"API Bağlantı Hatası (Kod: {cevap.status_code})")
+            # Hata detayını da gösterelim (debug için)
+            try:
+                st.code(cevap.text[:500])
+            except Exception:
+                pass
             return []
     except Exception as e:
         st.error(f"Sunucuya bağlanılamadı: {e}")
         return []
-
 veriler = sehirleri_cek()
-
 # 2. Arayüz ve Yapay Zeka (AI) Görselleştirme
 if veriler:
     for sehir in veriler:
-        # Strapi'deki alanın adı 'Ad' olarak varsayıldı. Eğer panelde 'Name' yaptıysan burayı 'Name' olarak değiştir.
-        sehir_adi = sehir["attributes"]["Ad"]
+        # Strapi v5'te "attributes" sarmalayıcısı kaldırıldı,
+        # veriler doğrudan nesnenin içinde geliyor.
+        sehir_adi = sehir.get("Ad") or sehir.get("attributes", {}).get("Ad", "Bilinmeyen Rota")
         
         st.subheader(f"📍 Rota: {sehir_adi}")
         
