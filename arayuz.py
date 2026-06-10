@@ -52,7 +52,7 @@ def sehirleri_cek():
 def tum_mekanlari_cek():
     try:
         # Tum mekanlari cek (tr locale)
-        url = f"{STRAPI_URL}/places?populate=KapakResmi,city&locale=tr&pagination[pageSize]=100"
+        url = f"{STRAPI_URL}/places?populate=KapakResmi&locale=tr&pagination[pageSize]=100"
         cevap = requests.get(url, timeout=30)
         if cevap.status_code == 200:
             return cevap.json().get("data", [])
