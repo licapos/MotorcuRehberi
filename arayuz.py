@@ -32,7 +32,7 @@ ROTA_BILGILERI = {
         "en_iyi_sezon": "Nisan - Kasım",
         "dikkat": "Virajlı yollar ve dik iniş-çıkışlar mevcut. Dikkatli sürüş önerilir.",
         "gorulen_yerler": "Olimpos, Çıralı, Demre, Myra Antik Kenti, Kaş Marina",
-        "gorsel": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1200&h=700&fit=crop",
+        "gorsel": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=700&fit=crop",
     },
     "Route 66": {
         "aciklama": "Dünyanın en ikonik motosiklet rotası! Chicago'dan Los Angeles'a uzanan efsanevi Route 66, Amerikan rüyasının asfalt üzerindeki yansıması.",
@@ -40,7 +40,7 @@ ROTA_BILGILERI = {
         "en_iyi_sezon": "Mayıs - Ekim",
         "dikkat": "Uzun mesafe için iyi bir planlama ve dinlenme molaları şart.",
         "gorulen_yerler": "Grand Canyon, Cadillac Ranch, Santa Monica Pier, Painted Desert",
-        "gorsel": "https://images.unsplash.com/photo-1545063328-c8e4e0da3e11?w=1200&h=700&fit=crop",
+        "gorsel": "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=1200&h=700&fit=crop",
     },
 }
 
