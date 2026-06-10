@@ -1,83 +1,109 @@
+# streamlit ile frontend arayuzu
+# strapi'den sehir ve mekan verilerini cekip gosteriyor
 import streamlit as st
 import requests
 
-# ================= AYARLAR =================
 STRAPI_URL = "https://motorcu-api.onrender.com/api"
-# ============================================
 
 st.set_page_config(page_title="Motorcu Gezi Rehberi", page_icon="🏍️", layout="centered")
 
-# Ozel CSS
+# sayfa tasarimi icin css
 st.markdown("""
 <style>
-    .sub-text {text-align:center;color:#aaa;font-size:1rem;margin-bottom:2rem}
-    .rota-bilgi {
-        font-size:1.05rem;color:#ddd;line-height:1.8;margin:12px 0;padding:16px;
-        background:linear-gradient(135deg,#1a1a2e,#16213e);
-        border-radius:12px;border-left:4px solid #e94560;
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+    
+    html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
+    
+    .hero-title {
+        text-align:center; font-size:2.6rem; font-weight:700;
+        background: linear-gradient(135deg, #ff6b6b, #ffa500, #ff6b6b);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        margin-bottom: 0;
     }
-    .mekan-card {
-        background:linear-gradient(135deg,#0f0f23,#1a1a3e);
-        border-radius:14px;padding:20px;margin:16px 0;
-        border:1px solid #ffffff10;
+    .hero-sub {
+        text-align:center; color:#888; font-size:1rem; margin-bottom:2rem;
+        font-weight:300; letter-spacing:0.5px;
     }
-    .mekan-baslik {font-size:1.3rem;font-weight:bold;color:#e94560;margin-bottom:4px}
-    .puan-badge {
-        display:inline-block;background:#e94560;color:white;
-        padding:4px 12px;border-radius:20px;font-size:0.85rem;font-weight:bold;
+    .city-header {
+        font-size:2rem; font-weight:600; color:#fff;
+        border-bottom: 2px solid #ff6b6b; padding-bottom:8px; margin-bottom:4px;
     }
-    .footer-text {text-align:center;color:#666;font-size:.85rem;margin-top:2rem;padding:16px}
+    .ulke-tag {
+        display:inline-block; background:linear-gradient(135deg,#ff6b6b,#ee5a24);
+        color:white; padding:4px 14px; border-radius:20px; font-size:0.8rem;
+        font-weight:500; letter-spacing:0.5px;
+    }
+    .bilgi-box {
+        background: linear-gradient(135deg, #1e1e3f 0%, #2d1b4e 100%);
+        border-radius:16px; padding:20px; margin:16px 0;
+        border-left: 4px solid #ff6b6b; color:#ddd; line-height:1.7;
+        font-size:1rem;
+    }
+    .place-name {
+        font-size:1.4rem; font-weight:600; 
+        background: linear-gradient(90deg, #ff6b6b, #ffa500);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        margin:0; padding:0;
+    }
+    .score {
+        display:inline-block; background:linear-gradient(135deg,#ff6b6b,#ee5a24);
+        color:white; padding:5px 14px; border-radius:24px;
+        font-size:0.85rem; font-weight:600; margin:6px 0 12px 0;
+    }
+    .desc-block {
+        background:#ffffff08; border-radius:12px; padding:14px 18px;
+        margin:8px 0 6px 0; color:#ccc; line-height:1.6; font-size:0.95rem;
+    }
+    .desc-label { font-weight:600; color:#ff6b6b; font-size:0.85rem; margin-bottom:4px; }
+    .divider { border:none; border-top:1px solid #ffffff10; margin:24px 0; }
+    .footer {
+        text-align:center; color:#555; font-size:0.8rem;
+        margin-top:3rem; padding:20px; border-top:1px solid #ffffff08;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🏍️ Motorcu Gezi Rehberi")
-st.markdown('<p class="sub-text">Bir şehir seçin, o şehirdeki mekânları YZ görselleriyle keşfedin!</p>', unsafe_allow_html=True)
+# baslik
+st.markdown('<div class="hero-title">🏍️ Motorcu Gezi Rehberi</div>', unsafe_allow_html=True)
+st.markdown('<p class="hero-sub">Keşfedilecek rotalar, görülecek yerler</p>', unsafe_allow_html=True)
 
 
-# Sehirleri Cek (hem tr hem en locale dene)
+# sehirleri strapi'den cek
 @st.cache_data(ttl=60)
-def sehirleri_cek():
+def sehirleri_getir():
     try:
-        cevap = requests.get(f"{STRAPI_URL}/cities?locale=tr", timeout=30)
-        if cevap.status_code == 200:
-            return cevap.json().get("data", [])
-        return []
-    except Exception as e:
-        st.error(f"Sunucuya baglanamadi: {e}")
+        r = requests.get(f"{STRAPI_URL}/cities?locale=tr", timeout=30)
+        return r.json().get("data", []) if r.status_code == 200 else []
+    except:
         return []
 
 
-# Mekanlari Cek
+# mekanlari strapi'den cek
 @st.cache_data(ttl=60)
-def tum_mekanlari_cek():
+def mekanlari_getir():
     try:
-        # Tum mekanlari cek (tr locale)
-        url = f"{STRAPI_URL}/places?populate=KapakResmi&locale=tr&pagination[pageSize]=100"
-        cevap = requests.get(url, timeout=30)
-        if cevap.status_code == 200:
-            return cevap.json().get("data", [])
-        return []
-    except Exception:
+        r = requests.get(f"{STRAPI_URL}/places?populate=KapakResmi&locale=tr&pagination[pageSize]=100", timeout=30)
+        return r.json().get("data", []) if r.status_code == 200 else []
+    except:
         return []
 
 
-# Strapi Media URL olustur
-def gorsel_url_al(mekan):
+# kapak resminin url'sini al
+def resim_url(mekan):
     try:
         kapak = mekan.get("KapakResmi")
         if kapak:
-            img_url = kapak.get("url", "")
-            if img_url:
-                if img_url.startswith("/"):
-                    return f"https://motorcu-api.onrender.com{img_url}"
-                return img_url
-    except Exception:
+            url = kapak.get("url", "")
+            if url.startswith("/"):
+                return f"https://motorcu-api.onrender.com{url}"
+            return url
+    except:
         pass
     return None
 
 
-# Mekan-sehir eslesme (isimlere gore)
-MEKAN_SEHIR = {
+# hangi mekan hangi sehre ait (isim eslemesi)
+MEKAN_ESLEME = {
     "Olimpos Antik Kenti": "Antalya",
     "Kas Marina": "Antalya",
     "Demre Myra Antik Kenti": "Antalya",
@@ -86,86 +112,74 @@ MEKAN_SEHIR = {
     "Santa Monica Pier": "Route 66",
 }
 
+# verileri cek
+sehirler = sehirleri_getir()
+mekanlar = mekanlari_getir()
 
-# Ana Akis
-veriler = sehirleri_cek()
-tum_mekanlar = tum_mekanlari_cek()
+if sehirler:
+    # sehir secimi
+    sehir_adlari = [s.get("Ad", "?") for s in sehirler]
+    sehir_map = {s.get("Ad", "?"): s for s in sehirler}
 
-if veriler:
-    sehir_isimleri = []
-    sehir_map = {}
-    for sehir in veriler:
-        ad = sehir.get("Ad", "Bilinmeyen")
-        sehir_isimleri.append(ad)
-        sehir_map[ad] = sehir
+    secim = st.selectbox("🌍 Şehir Seçin", options=sehir_adlari, index=0)
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-    secilen_sehir_adi = st.selectbox("🌍 Şehir Seçin:", options=sehir_isimleri, index=0)
-    st.markdown("---")
+    if secim:
+        sehir = sehir_map[secim]
 
-    if secilen_sehir_adi:
-        secilen_sehir = sehir_map[secilen_sehir_adi]
-        sehir_doc_id = secilen_sehir.get("documentId")
-
-        st.header(f"📍 {secilen_sehir_adi}")
-
-        ulke = secilen_sehir.get("Ulke")
+        # sehir bilgileri
+        st.markdown(f'<div class="city-header">📍 {secim}</div>', unsafe_allow_html=True)
+        
+        ulke = sehir.get("Ulke", "")
         if ulke:
-            st.caption(f"🌍 Ülke: **{ulke}**")
+            st.markdown(f'<span class="ulke-tag">{ulke}</span>', unsafe_allow_html=True)
 
-        kisa_bilgi = secilen_sehir.get("KisaBilgi")
-        if kisa_bilgi and isinstance(kisa_bilgi, str) and kisa_bilgi.strip():
-            st.markdown(f'<div class="rota-bilgi">{kisa_bilgi}</div>', unsafe_allow_html=True)
+        bilgi = sehir.get("KisaBilgi", "")
+        if bilgi and isinstance(bilgi, str) and bilgi.strip():
+            st.markdown(f'<div class="bilgi-box">{bilgi}</div>', unsafe_allow_html=True)
 
-        st.markdown("---")
+        st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-        # Mekanlari filtrele: city iliskisi varsa ona gore, yoksa isim eslesmesi ile
-        filtreli_mekanlar = []
-        for mekan in tum_mekanlar:
-            mekan_adi = mekan.get("MekanAdi", "")
-            # City iliskisi var mi kontrol et
-            city_rel = mekan.get("city")
-            if city_rel and city_rel.get("documentId") == sehir_doc_id:
-                filtreli_mekanlar.append(mekan)
-            elif not city_rel:
-                # Isim eslesmesi ile kontrol et
-                for anahtar, sehir_kismi in MEKAN_SEHIR.items():
-                    if anahtar in mekan_adi and sehir_kismi in secilen_sehir_adi:
-                        filtreli_mekanlar.append(mekan)
-                        break
+        # secilen sehre ait mekanlari filtrele
+        sehir_mekanlari = []
+        for m in mekanlar:
+            isim = m.get("MekanAdi", "")
+            for anahtar, hedef in MEKAN_ESLEME.items():
+                if anahtar in isim and hedef in secim:
+                    sehir_mekanlari.append(m)
+                    break
 
-        if filtreli_mekanlar:
-            st.subheader(f"🏛️ Mekânlar ({len(filtreli_mekanlar)} adet)")
-            st.markdown("")
+        if sehir_mekanlari:
+            st.markdown(f"### 🏛️ Görülecek Yerler")
 
-            for mekan in filtreli_mekanlar:
-                mekan_adi = mekan.get("MekanAdi", "Bilinmeyen Mekan")
-                aciklama = mekan.get("Aciklama", "")
-                puan = mekan.get("Puan", 0)
+            for m in sehir_mekanlari:
+                isim = m.get("MekanAdi", "")
+                aciklama = m.get("Aciklama", "")
+                puan = m.get("Puan", 0)
 
-                st.markdown(f'<div class="mekan-baslik">📌 {mekan_adi}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="place-name">{isim}</div>', unsafe_allow_html=True)
 
                 if puan:
-                    st.markdown(f'<span class="puan-badge">⭐ {puan}/5</span>', unsafe_allow_html=True)
+                    st.markdown(f'<span class="score">⭐ {puan}/5</span>', unsafe_allow_html=True)
 
-                # Kapak resmi (Strapi Media Library'den)
-                gorsel_url = gorsel_url_al(mekan)
-                if gorsel_url:
-                    st.image(gorsel_url, caption=f"🤖 YZ Üretimi: {mekan_adi}", use_container_width=True)
+                # kapak resmi
+                url = resim_url(m)
+                if url:
+                    st.image(url, use_container_width=True)
 
-                # Aciklama (TR + EN birlesik)
+                # aciklama (turkce ve ingilizce ayri goster)
                 if aciklama:
                     if "[EN]" in aciklama:
                         parcalar = aciklama.split("[EN]")
-                        st.markdown(f"**🇹🇷 Türkçe:** {parcalar[0].strip()}")
-                        st.markdown(f"**🇬🇧 English:** {parcalar[1].strip()}")
+                        st.markdown(f'<div class="desc-label">🇹🇷 Türkçe</div><div class="desc-block">{parcalar[0].strip()}</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="desc-label">🇬🇧 English</div><div class="desc-block">{parcalar[1].strip()}</div>', unsafe_allow_html=True)
                     else:
-                        st.markdown(f"**📝 Açıklama:** {aciklama}")
+                        st.markdown(f'<div class="desc-block">{aciklama}</div>', unsafe_allow_html=True)
 
-                st.markdown("---")
+                st.markdown('<hr class="divider">', unsafe_allow_html=True)
         else:
-            st.info("Bu şehir için henüz mekân eklenmemiş. Otomasyon scriptini çalıştırarak mekân ekleyebilirsiniz.")
+            st.info("Bu rota için henüz mekân eklenmemiş.")
 
-    st.markdown('<p class="footer-text">🏍️ Motorcu Gezi Rehberi — YZ Destekli Gezi Platformu 🛣️</p>', unsafe_allow_html=True)
-
+    st.markdown('<div class="footer">Motorcu Gezi Rehberi © 2025</div>', unsafe_allow_html=True)
 else:
-    st.warning("Şehir bulunamadı. Strapi backend'in çalıştığından emin olun.")
+    st.warning("Veriler yüklenemedi. Backend çalışıyor mu kontrol edin.")
