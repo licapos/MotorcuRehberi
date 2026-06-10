@@ -68,6 +68,18 @@ st.markdown('<div class="hero-title">🏍️ Motorcu Gezi Rehberi</div>', unsafe
 st.markdown('<p class="hero-sub">Keşfedilecek rotalar, görülecek yerler</p>', unsafe_allow_html=True)
 
 
+# her mekan icin gorsel linkleri (github repo - kalici)
+GITHUB_IMG = "https://raw.githubusercontent.com/licapos/MotorcuRehberi/master/images"
+YEDEK_GORSELLER = {
+    "Olimpos Antik Kenti": f"{GITHUB_IMG}/olimpos_antik_kenti.jpg",
+    "Kas Marina": f"{GITHUB_IMG}/kas_marina.jpg",
+    "Demre Myra Antik Kenti": f"{GITHUB_IMG}/demre_myra_antik_kenti.jpg",
+    "Grand Canyon": f"{GITHUB_IMG}/grand_canyon.jpg",
+    "Cadillac Ranch": f"{GITHUB_IMG}/cadillac_ranch.jpg",
+    "Santa Monica Pier": f"{GITHUB_IMG}/santa_monica_pier.jpg",
+}
+
+
 # sehirleri strapi'den cek
 @st.cache_data(ttl=60)
 def sehirleri_getir():
@@ -88,21 +100,36 @@ def mekanlari_getir():
         return []
 
 
-# kapak resminin url'sini al
+# kapak resminin url'sini al, yoksa yedek gorsel kullan
 def resim_url(mekan):
+    mekan_adi = mekan.get("MekanAdi", "")
+
+    # once strapi'deki gorsele bak
     try:
         kapak = mekan.get("KapakResmi")
         if kapak:
             url = kapak.get("url", "")
-            if url.startswith("/"):
-                return f"https://motorcu-api.onrender.com{url}"
-            return url
+            if url:
+                # tam url mi kontrol et
+                if url.startswith("http"):
+                    tam_url = url
+                else:
+                    tam_url = f"https://motorcu-api.onrender.com{url}"
+                # erisilebilir mi test et
+                try:
+                    test = requests.head(tam_url, timeout=5)
+                    if test.status_code == 200:
+                        return tam_url
+                except:
+                    pass
     except:
         pass
-    return None
+
+    # strapi gorseli yoksa yedek gorseli dondur
+    return YEDEK_GORSELLER.get(mekan_adi)
 
 
-# hangi mekan hangi sehre ait (isim eslemesi)
+# hangi mekan hangi sehre ait
 MEKAN_ESLEME = {
     "Olimpos Antik Kenti": "Antalya",
     "Kas Marina": "Antalya",
@@ -117,7 +144,6 @@ sehirler = sehirleri_getir()
 mekanlar = mekanlari_getir()
 
 if sehirler:
-    # sehir secimi
     sehir_adlari = [s.get("Ad", "?") for s in sehirler]
     sehir_map = {s.get("Ad", "?"): s for s in sehirler}
 
@@ -126,8 +152,6 @@ if sehirler:
 
     if secim:
         sehir = sehir_map[secim]
-
-        # sehir bilgileri
         st.markdown(f'<div class="city-header">📍 {secim}</div>', unsafe_allow_html=True)
         
         ulke = sehir.get("Ulke", "")
@@ -162,12 +186,12 @@ if sehirler:
                 if puan:
                     st.markdown(f'<span class="score">⭐ {puan}/5</span>', unsafe_allow_html=True)
 
-                # kapak resmi
+                # gorsel (strapi varsa o, yoksa yedek)
                 url = resim_url(m)
                 if url:
                     st.image(url, use_container_width=True)
 
-                # aciklama (turkce ve ingilizce ayri goster)
+                # aciklama
                 if aciklama:
                     if "[EN]" in aciklama:
                         parcalar = aciklama.split("[EN]")
