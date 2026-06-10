@@ -73,8 +73,7 @@ for p in places:
     kapak = p.get("KapakResmi")
 
     if kapak:
-        print(f"[SKIP] {mekan_adi} - zaten gorseli var")
-        continue
+        print(f"[YENIDEN] {mekan_adi} - eski gorsel degistiriliyor")
 
     print(f"\n[ISLEM] {mekan_adi}")
     gorsel = gorsel_uret(mekan_adi)
