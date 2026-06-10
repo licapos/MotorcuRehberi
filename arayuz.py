@@ -7,7 +7,7 @@ STRAPI_URL = "https://motorcu-api.onrender.com/api"
 
 st.set_page_config(page_title="Motorcu Gezi Rehberi", page_icon="🏍️", layout="centered")
 
-# Özel CSS
+# Ozel CSS
 st.markdown("""
 <style>
     .sub-text {text-align:center;color:#aaa;font-size:1rem;margin-bottom:2rem}
@@ -34,46 +34,53 @@ st.title("🏍️ Motorcu Gezi Rehberi")
 st.markdown('<p class="sub-text">Bir şehir seçin, o şehirdeki mekânları YZ görselleriyle keşfedin!</p>', unsafe_allow_html=True)
 
 
-# 1. Strapi'den Şehirleri Çek
+# Sehirleri Cek (hem tr hem en locale dene)
 @st.cache_data(ttl=60)
 def sehirleri_cek():
     try:
+        # Once en locale dene
         cevap = requests.get(f"{STRAPI_URL}/cities?locale=en", timeout=30)
-        if cevap.status_code == 200:
-            return cevap.json().get("data", [])
-        else:
-            st.error(f"Şehir API Hatası (Kod: {cevap.status_code})")
-            return []
+        veriler = cevap.json().get("data", []) if cevap.status_code == 200 else []
+
+        # Sonra tr locale dene
+        cevap2 = requests.get(f"{STRAPI_URL}/cities?locale=tr", timeout=30)
+        veriler2 = cevap2.json().get("data", []) if cevap2.status_code == 200 else []
+
+        # Birlesik liste (documentId'ye gore tekrar engelle)
+        seen = set()
+        birlesik = []
+        for v in veriler + veriler2:
+            did = v.get("documentId")
+            if did not in seen:
+                seen.add(did)
+                birlesik.append(v)
+        return birlesik
     except Exception as e:
-        st.error(f"Sunucuya bağlanılamadı: {e}")
+        st.error(f"Sunucuya baglanamadi: {e}")
         return []
 
 
-# 2. Strapi'den Mekanları Çek (şehre göre filtrelenmiş)
+# Mekanlari Cek
 @st.cache_data(ttl=60)
-def mekanlari_cek(sehir_doc_id):
+def tum_mekanlari_cek():
     try:
-        # Mekânları şehre göre filtrele + kapak resmini getir
-        url = f"{STRAPI_URL}/places?filters[city][documentId][$eq]={sehir_doc_id}&populate=KapakResmi,city&locale=tr"
+        # Tum mekanlari cek (tr locale)
+        url = f"{STRAPI_URL}/places?populate=KapakResmi,city&locale=tr&pagination[pageSize]=100"
         cevap = requests.get(url, timeout=30)
         if cevap.status_code == 200:
             return cevap.json().get("data", [])
-        else:
-            return []
+        return []
     except Exception:
         return []
 
 
-# 3. Strapi Media URL oluştur
+# Strapi Media URL olustur
 def gorsel_url_al(mekan):
-    """Mekân verisinden kapak resmi URL'sini çıkarır"""
     try:
         kapak = mekan.get("KapakResmi")
         if kapak:
-            # Strapi v5 yapısı
             img_url = kapak.get("url", "")
             if img_url:
-                # Eğer relative URL ise tam URL oluştur
                 if img_url.startswith("/"):
                     return f"https://motorcu-api.onrender.com{img_url}"
                 return img_url
@@ -82,11 +89,22 @@ def gorsel_url_al(mekan):
     return None
 
 
-# Ana Akış
+# Mekan-sehir eslesme (isimlere gore)
+MEKAN_SEHIR = {
+    "Olimpos Antik Kenti": "Antalya",
+    "Kas Marina": "Antalya",
+    "Demre Myra Antik Kenti": "Antalya",
+    "Grand Canyon": "Route 66",
+    "Cadillac Ranch": "Route 66",
+    "Santa Monica Pier": "Route 66",
+}
+
+
+# Ana Akis
 veriler = sehirleri_cek()
+tum_mekanlar = tum_mekanlari_cek()
 
 if veriler:
-    # Şehir isimlerini çıkar
     sehir_isimleri = []
     sehir_map = {}
     for sehir in veriler:
@@ -94,7 +112,6 @@ if veriler:
         sehir_isimleri.append(ad)
         sehir_map[ad] = sehir
 
-    # Şehir seçimi
     secilen_sehir_adi = st.selectbox("🌍 Şehir Seçin:", options=sehir_isimleri, index=0)
     st.markdown("---")
 
@@ -102,55 +119,64 @@ if veriler:
         secilen_sehir = sehir_map[secilen_sehir_adi]
         sehir_doc_id = secilen_sehir.get("documentId")
 
-        # Şehir başlığı
         st.header(f"📍 {secilen_sehir_adi}")
 
-        # Ülke bilgisi
         ulke = secilen_sehir.get("Ulke")
         if ulke:
             st.caption(f"🌍 Ülke: **{ulke}**")
 
-        # Kısa bilgi
         kisa_bilgi = secilen_sehir.get("KisaBilgi")
         if kisa_bilgi and isinstance(kisa_bilgi, str) and kisa_bilgi.strip():
             st.markdown(f'<div class="rota-bilgi">{kisa_bilgi}</div>', unsafe_allow_html=True)
 
         st.markdown("---")
 
-        # Mekânları getir
-        if sehir_doc_id:
-            mekanlar = mekanlari_cek(sehir_doc_id)
+        # Mekanlari filtrele: city iliskisi varsa ona gore, yoksa isim eslesmesi ile
+        filtreli_mekanlar = []
+        for mekan in tum_mekanlar:
+            mekan_adi = mekan.get("MekanAdi", "")
+            # City iliskisi var mi kontrol et
+            city_rel = mekan.get("city")
+            if city_rel and city_rel.get("documentId") == sehir_doc_id:
+                filtreli_mekanlar.append(mekan)
+            elif not city_rel:
+                # Isim eslesmesi ile kontrol et
+                for anahtar, sehir_kismi in MEKAN_SEHIR.items():
+                    if anahtar in mekan_adi and sehir_kismi in secilen_sehir_adi:
+                        filtreli_mekanlar.append(mekan)
+                        break
 
-            if mekanlar:
-                st.subheader(f"🏛️ Mekânlar ({len(mekanlar)} adet)")
-                st.markdown("")
+        if filtreli_mekanlar:
+            st.subheader(f"🏛️ Mekânlar ({len(filtreli_mekanlar)} adet)")
+            st.markdown("")
 
-                for mekan in mekanlar:
-                    mekan_adi = mekan.get("MekanAdi", "Bilinmeyen Mekân")
-                    aciklama = mekan.get("Aciklama", "")
-                    aciklama_en = mekan.get("AciklamaEN", "")
-                    puan = mekan.get("Puan", 0)
+            for mekan in filtreli_mekanlar:
+                mekan_adi = mekan.get("MekanAdi", "Bilinmeyen Mekan")
+                aciklama = mekan.get("Aciklama", "")
+                puan = mekan.get("Puan", 0)
 
-                    # Mekân kartı
-                    st.markdown(f'<div class="mekan-baslik">📌 {mekan_adi}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="mekan-baslik">📌 {mekan_adi}</div>', unsafe_allow_html=True)
 
-                    if puan:
-                        st.markdown(f'<span class="puan-badge">⭐ {puan}/5</span>', unsafe_allow_html=True)
+                if puan:
+                    st.markdown(f'<span class="puan-badge">⭐ {puan}/5</span>', unsafe_allow_html=True)
 
-                    # Kapak resmi (Strapi Media Library'den)
-                    gorsel_url = gorsel_url_al(mekan)
-                    if gorsel_url:
-                        st.image(gorsel_url, caption=f"🤖 YZ Üretimi: {mekan_adi}", use_container_width=True)
+                # Kapak resmi (Strapi Media Library'den)
+                gorsel_url = gorsel_url_al(mekan)
+                if gorsel_url:
+                    st.image(gorsel_url, caption=f"🤖 YZ Üretimi: {mekan_adi}", use_container_width=True)
 
-                    # Açıklama
-                    if aciklama:
-                        st.markdown(f"**🇹🇷 Türkçe:** {aciklama}")
-                    if aciklama_en:
-                        st.markdown(f"**🇬🇧 English:** {aciklama_en}")
+                # Aciklama (TR + EN birlesik)
+                if aciklama:
+                    if "[EN]" in aciklama:
+                        parcalar = aciklama.split("[EN]")
+                        st.markdown(f"**🇹🇷 Türkçe:** {parcalar[0].strip()}")
+                        st.markdown(f"**🇬🇧 English:** {parcalar[1].strip()}")
+                    else:
+                        st.markdown(f"**📝 Açıklama:** {aciklama}")
 
-                    st.markdown("---")
-            else:
-                st.info("Bu şehir için henüz mekân eklenmemiş. Otomasyon scriptini çalıştırarak mekân ekleyebilirsiniz.")
+                st.markdown("---")
+        else:
+            st.info("Bu şehir için henüz mekân eklenmemiş. Otomasyon scriptini çalıştırarak mekân ekleyebilirsiniz.")
 
     st.markdown('<p class="footer-text">🏍️ Motorcu Gezi Rehberi — YZ Destekli Gezi Platformu 🛣️</p>', unsafe_allow_html=True)
 
