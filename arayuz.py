@@ -180,6 +180,6 @@ if sehirler:
         else:
             st.info("Bu rota için henüz mekân eklenmemiş.")
 
-    st.markdown('<div class="footer">Motorcu Gezi Rehberi © 2025</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer">Motorcu Gezi Rehberi</div>', unsafe_allow_html=True)
 else:
     st.warning("Veriler yüklenemedi. Backend çalışıyor mu kontrol edin.")
